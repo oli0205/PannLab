@@ -58,6 +58,14 @@
         button:hover {
             background: #2563eb;
         }
+        .delete-btn {
+            background: #ef4444;
+            margin-top: 8px;
+            width: 100%;
+        }
+        .delete-btn:hover {
+            background: #dc2626;
+        }
         .comment-card {
             border: 1px solid #e5e7eb;
             border-radius: 16px;
@@ -136,6 +144,14 @@
             height: 42px;
             object-fit: contain;
         }
+        .top-time-input {
+            margin-bottom: 16px;
+        }
+        .top-time-input label {
+            font-weight: 600;
+            display: block;
+            margin-bottom: 8px;
+        }
         @media (max-width: 768px) {
             .container {
                 grid-template-columns: 1fr;
@@ -148,6 +164,12 @@
     <!-- 编辑区 -->
     <div class="editor">
         <h1>📝 Pann论坛截图生成器</h1>
+
+        <!-- 顶部时间栏编辑 -->
+        <div class="top-time-input">
+            <label>顶部红字时间栏（可编辑）</label>
+            <input type="text" id="topTimeInput" value="">
+        </div>
 
         <div class="batch-area">
             <label style="font-weight: 600;">批量导入评论（每行一条）</label>
@@ -180,9 +202,8 @@
     <div class="preview">
         <div id="captureArea">
             <div class="preview-header">
-                <div style="color: #ef4444; font-weight: bold; font-size: 14px;">+ 2025年09月12日 排名更多</div>
+                <div style="color: #ef4444; font-weight: bold; font-size: 14px;" id="topTimeDisplay">+ 2025.09.12 랭킹 더보기</div>
                 <div style="display: flex; align-items: center; gap: 12px; margin: 16px 0;">
-                    <!-- 图片使用相对路径：和 index.html 同目录下的 pann-logo.png -->
                     <img src="pann-logo.png" alt="Pann Logo" class="preview-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     <div style="width: 42px; height: 42px; background: #e5e7eb; border-radius: 8px; display: none; align-items: center; justify-content: center; font-size: 20px;">📷</div>
                     <h1 class="preview-title" id="previewTitle">奢侈妻子vs赌博丈夫</h1>
@@ -197,6 +218,20 @@
 
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script>
+    // 获取当天日期，格式：YYYY.MM.DD
+    function getTodayDate() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `${year}.${month}.${day}`;
+    }
+
+    // 生成默认的顶部时间文案（当天日期 + 韩语）
+    function getDefaultTopTime() {
+        return `+ ${getTodayDate()} 랭킹 더보기`;
+    }
+
     // 数据存储
     let comments = [
         { id: 1, username: "ㅇㅇ", content: "物以类聚，禁止放生", likes: 3, dislikes: 0, time: "2025.09.15 00:52" },
@@ -215,18 +250,35 @@
     const batchComments = document.getElementById('batchComments');
     const exportBtn = document.getElementById('exportBtn');
     const captureArea = document.getElementById('captureArea');
+    const topTimeInput = document.getElementById('topTimeInput');
+    const topTimeDisplay = document.getElementById('topTimeDisplay');
 
-    // 获取当前日期
+    // 初始化顶部时间栏（自动填入当天日期）
+    topTimeInput.value = getDefaultTopTime();
+    topTimeDisplay.innerText = topTimeInput.value;
+
+    // 监听顶部时间栏变化
+    topTimeInput.addEventListener('input', () => {
+        topTimeDisplay.innerText = topTimeInput.value;
+    });
+
+    // 获取当前日期（用于评论时间）
     function getCurrentDate() {
         const now = new Date();
         return `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    }
+
+    // 删除评论
+    function deleteComment(id) {
+        comments = comments.filter(comment => comment.id !== id);
+        renderAll();
     }
 
     // 渲染编辑区和预览区
     function renderAll() {
         // 渲染编辑器中的评论列表
         commentsEditor.innerHTML = comments.map(comment => `
-            <div class="comment-card">
+            <div class="comment-card" data-comment-id="${comment.id}">
                 <input type="text" class="edit-username" data-id="${comment.id}" value="${escapeHtml(comment.username)}" placeholder="用户名" style="margin-bottom: 8px;">
                 <textarea class="edit-content" data-id="${comment.id}" rows="2" placeholder="评论内容" style="margin-bottom: 8px;">${escapeHtml(comment.content)}</textarea>
                 <div class="grid-2">
@@ -234,6 +286,7 @@
                     <input type="number" class="edit-dislikes" data-id="${comment.id}" value="${comment.dislikes}" placeholder="点踩">
                 </div>
                 <input type="text" class="edit-time" data-id="${comment.id}" value="${escapeHtml(comment.time)}" placeholder="时间">
+                <button class="delete-btn" data-id="${comment.id}">🗑️ 删除</button>
             </div>
         `).join('');
 
@@ -252,6 +305,14 @@
         });
         document.querySelectorAll('.edit-time').forEach(el => {
             el.addEventListener('change', (e) => updateComment(parseInt(el.dataset.id), 'time', e.target.value));
+        });
+
+        // 绑定删除事件
+        document.querySelectorAll('.delete-btn').forEach(el => {
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                deleteComment(parseInt(el.dataset.id));
+            });
         });
 
         // 渲染预览区评论
