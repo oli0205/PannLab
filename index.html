@@ -1,0 +1,406 @@
+"use client";
+
+import { useRef, useState } from "react";
+import html2canvas from "html2canvas";
+import Image from "next/image";
+
+type Comment = {
+  id: number;
+  username: string;
+  content: string;
+  likes: number;
+  dislikes: number;
+  time: string;
+};
+
+export default function Home() {
+  const captureRef = useRef<HTMLDivElement>(null);
+
+  const [title, setTitle] = useState("奢侈妻子vs赌博丈夫");
+
+  const [content, setContent] = useState(
+    "妻子结婚前年薪4000万韩元，是白领，从父母那里得到了很多零花钱，但都用来打扮。包、衣服、鞋子、饰品、小狗用品等都是名牌..."
+  );
+
+  const [bulkComments, setBulkComments] = useState("");
+
+  const [comments, setComments] = useState<Comment[]>([
+    {
+      id: 1,
+      username: "ㅇㅇ",
+      content: "物以类聚，禁止放生",
+      likes: 3,
+      dislikes: 0,
+      time: "2025.09.15 00:52",
+    },
+    {
+      id: 2,
+      username: "ㅇㅇ",
+      content: "选择妻子也是赌博",
+      likes: 2,
+      dislikes: 1,
+      time: "2025.09.14 23:34",
+    },
+  ]);
+
+  // 获取当前日期
+  const getCurrentDate = () => {
+    const now = new Date();
+
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+
+    return `${year}.${month}.${day}`;
+  };
+
+  // 添加单条评论
+  const addComment = () => {
+    setComments([
+      ...comments,
+      {
+        id: Date.now(),
+        username: "ㅇㅇ",
+        content: "新评论",
+        likes: 0,
+        dislikes: 0,
+        time: getCurrentDate(),
+      },
+    ]);
+  };
+
+  // 批量导入评论
+  const importBulkComments = () => {
+    if (!bulkComments.trim()) return;
+
+    const lines = bulkComments
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line !== "");
+
+    const newComments: Comment[] = lines.map((line) => ({
+      id: Date.now() + Math.random(),
+      username: "ㅇㅇ",
+      content: line,
+      likes: 0,
+      dislikes: 0,
+      time: getCurrentDate(),
+    }));
+
+    setComments([...comments, ...newComments]);
+
+    setBulkComments("");
+  };
+
+  // 更新评论
+  const updateComment = (
+    id: number,
+    field: keyof Comment,
+    value: string | number
+  ) => {
+    setComments(
+      comments.map((comment) =>
+        comment.id === id
+          ? { ...comment, [field]: value }
+          : comment
+      )
+    );
+  };
+
+  // 导出截图
+  const exportImage = async () => {
+    if (!captureRef.current) return;
+
+    const canvas = await html2canvas(captureRef.current, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+    });
+
+    const link = document.createElement("a");
+    link.download = "pann-post.png";
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  };
+
+  return (
+    <main className="min-h-screen bg-gray-100 p-6">
+      <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-6">
+
+        {/* 编辑区 */}
+        <div className="bg-white rounded-2xl p-5 shadow-sm h-fit">
+
+          <h1 className="text-2xl font-bold mb-6">
+            Pann论坛截图生成器
+          </h1>
+
+          {/* 批量导入 */}
+          <div className="mb-6">
+            <h2 className="font-bold text-lg mb-2">
+              批量导入评论
+            </h2>
+
+            <textarea
+              className="w-full border rounded-xl p-3 h-40"
+              placeholder={`每行一条评论，例如：
+
+这种人真的很多
+绝了
+韩网会骂疯吧
+这也太离谱了`}
+              value={bulkComments}
+              onChange={(e) =>
+                setBulkComments(e.target.value)
+              }
+            />
+
+            <button
+              onClick={importBulkComments}
+              className="mt-3 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl font-semibold"
+            >
+              一键导入评论
+            </button>
+          </div>
+
+          <div className="space-y-4">
+
+            {/* 标题 */}
+            <div>
+              <label className="font-semibold text-sm">
+                标题
+              </label>
+
+              <input
+                className="w-full border rounded-lg p-3 mt-1"
+                value={title}
+                onChange={(e) =>
+                  setTitle(e.target.value)
+                }
+              />
+            </div>
+
+            {/* 正文 */}
+            <div>
+              <label className="font-semibold text-sm">
+                正文
+              </label>
+
+              <textarea
+                className="w-full border rounded-lg p-3 mt-1 h-52"
+                value={content}
+                onChange={(e) =>
+                  setContent(e.target.value)
+                }
+              />
+            </div>
+
+            {/* 评论区 */}
+            <div className="pt-4">
+
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-bold text-lg">
+                  评论区
+                </h2>
+
+                <button
+                  onClick={addComment}
+                  className="bg-black text-white px-4 py-2 rounded-xl"
+                >
+                  + 添加评论
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {comments.map((comment) => (
+                  <div
+                    key={comment.id}
+                    className="border rounded-2xl p-4"
+                  >
+
+                    {/* 用户名 */}
+                    <input
+                      className="w-full border rounded-lg p-2 mb-2"
+                      value={comment.username}
+                      onChange={(e) =>
+                        updateComment(
+                          comment.id,
+                          "username",
+                          e.target.value
+                        )
+                      }
+                      placeholder="用户名"
+                    />
+
+                    {/* 评论内容 */}
+                    <textarea
+                      className="w-full border rounded-lg p-2 mb-2"
+                      value={comment.content}
+                      onChange={(e) =>
+                        updateComment(
+                          comment.id,
+                          "content",
+                          e.target.value
+                        )
+                      }
+                      placeholder="评论内容"
+                    />
+
+                    {/* 点赞 点踩 */}
+                    <div className="grid grid-cols-2 gap-2 mb-2">
+
+                      <input
+                        type="number"
+                        className="border rounded-lg p-2"
+                        value={comment.likes}
+                        onChange={(e) =>
+                          updateComment(
+                            comment.id,
+                            "likes",
+                            Number(e.target.value)
+                          )
+                        }
+                        placeholder="点赞"
+                      />
+
+                      <input
+                        type="number"
+                        className="border rounded-lg p-2"
+                        value={comment.dislikes}
+                        onChange={(e) =>
+                          updateComment(
+                            comment.id,
+                            "dislikes",
+                            Number(e.target.value)
+                          )
+                        }
+                        placeholder="点踩"
+                      />
+                    </div>
+
+                    {/* 时间 */}
+                    <input
+                      className="w-full border rounded-lg p-2"
+                      value={comment.time}
+                      onChange={(e) =>
+                        updateComment(
+                          comment.id,
+                          "time",
+                          e.target.value
+                        )
+                      }
+                      placeholder="时间"
+                    />
+                  </div>
+                ))}
+              </div>
+
+            </div>
+
+            {/* 导出按钮 */}
+            <button
+              onClick={exportImage}
+              className="w-full bg-red-500 hover:bg-red-600 text-white py-4 rounded-2xl font-bold text-lg mt-6"
+            >
+              导出Pann截图
+            </button>
+
+          </div>
+        </div>
+
+        {/* 预览区 */}
+        <div>
+
+          <div
+            ref={captureRef}
+            className="bg-white rounded-2xl shadow-sm p-6"
+          >
+
+            {/* 顶部 */}
+            <div className="border-b pb-5 mb-5">
+
+              <div className="text-red-500 font-bold text-sm mb-3">
+                +2025年09月12日 排名更多
+              </div>
+
+              {/* logo + 标题 */}
+              <div className="flex items-center gap-3 mb-4">
+
+                <Image
+                  src="/pann-logo.png"
+                  alt="Pann Logo"
+                  width={42}
+                  height={42}
+                  className="object-contain"
+                />
+
+                <h1 className="text-3xl font-bold leading-tight">
+                  {title}
+                </h1>
+
+              </div>
+
+              <div className="text-gray-400 text-sm">
+                조회 52,381 추천 128
+              </div>
+
+            </div>
+
+            {/* 正文 */}
+            <div className="text-[18px] leading-9 whitespace-pre-wrap mb-10">
+              {content}
+            </div>
+
+            {/* 评论区 */}
+            <div className="space-y-6">
+
+              {comments.map((comment) => (
+                <div
+                  key={comment.id}
+                  className="border-t pt-4"
+                >
+
+                  {/* 时间 */}
+                  <div className="flex items-center justify-between text-sm text-gray-400 mb-2">
+
+                    <div>
+                      {comment.time}
+                    </div>
+
+                    {/* 点赞点踩 */}
+                    <div className="flex items-center gap-4">
+
+                      <div className="text-red-500 font-semibold">
+                        👍 {comment.likes}
+                      </div>
+
+                      <div className="text-blue-500 font-semibold">
+                        👎 {comment.dislikes}
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                  {/* 用户名 */}
+                  <div className="font-semibold mb-2">
+                    {comment.username}
+                  </div>
+
+                  {/* 评论正文 */}
+                  <div className="text-[17px] leading-8 whitespace-pre-wrap">
+                    {comment.content}
+                  </div>
+
+                </div>
+              ))}
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+    </main>
+  );
+}
