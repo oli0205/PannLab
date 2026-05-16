@@ -87,7 +87,7 @@
             margin: 16px 0;
         }
         .preview-content {
-            font-size: 18px;
+            font-size: 16px;
             line-height: 1.6;
             margin-bottom: 40px;
             white-space: pre-wrap;
@@ -100,13 +100,53 @@
         .comment-meta {
             display: flex;
             justify-content: space-between;
+            align-items: center;
             color: #9ca3af;
             font-size: 13px;
             margin-bottom: 8px;
         }
+        .comment-id-time {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .comment-like-icon {
+            width: 20px;
+            height: 20px;
+            object-fit: contain;
+            vertical-align: middle;
+        }
+        .comment-username-wrapper {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
         .comment-username {
             font-weight: 600;
-            margin-bottom: 8px;
+        }
+        .comment-votes {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .vote-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .vote-icon {
+            width: 18px;
+            height: 18px;
+            object-fit: contain;
+        }
+        .vote-count {
+            font-weight: 600;
+        }
+        .vote-count.likes {
+            color: #ef4444;
+        }
+        .vote-count.dislikes {
+            color: #6b7280;
         }
         .export-btn {
             background: #ef4444;
@@ -140,8 +180,8 @@
             margin: 8px 0;
         }
         .preview-logo {
-            width: 42px;
-            height: 42px;
+            width: 56px;
+            height: 56px;
             object-fit: contain;
         }
         .top-time-input {
@@ -151,6 +191,35 @@
             font-weight: 600;
             display: block;
             margin-bottom: 8px;
+        }
+        .image-upload-area {
+            margin-top: 16px;
+            padding: 12px;
+            background: #f9fafb;
+            border-radius: 12px;
+        }
+        .image-upload-area label {
+            font-weight: 600;
+            display: block;
+            margin-bottom: 8px;
+        }
+        .inserted-image {
+            max-width: 100%;
+            max-height: 300px;
+            margin: 12px 0;
+            border-radius: 12px;
+        }
+        .image-preview-inline {
+            margin-top: 12px;
+        }
+        .remove-image-btn {
+            background: #6b7280;
+            padding: 4px 12px;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+        #captureArea {
+            padding: 24px;
         }
         @media (max-width: 768px) {
             .container {
@@ -165,7 +234,6 @@
     <div class="editor">
         <h1>📝 Pann论坛截图生成器</h1>
 
-        <!-- 顶部时间栏编辑 -->
         <div class="top-time-input">
             <label>顶部红字时间栏（可编辑）</label>
             <input type="text" id="topTimeInput" value="">
@@ -187,6 +255,14 @@
             <textarea id="contentInput" rows="6">妻子结婚前年薪4000万韩元，是白领，从父母那里得到了很多零花钱，但都用来打扮。包、衣服、鞋子、饰品、小狗用品等都是名牌...</textarea>
         </div>
 
+        <!-- 正文图片上传 -->
+        <div class="image-upload-area">
+            <label>📷 正文插入图片</label>
+            <input type="file" id="contentImageUpload" accept="image/*">
+            <div id="contentImagePreview" class="image-preview-inline"></div>
+            <button id="removeContentImageBtn" class="remove-image-btn" style="display: none;">移除图片</button>
+        </div>
+
         <div style="margin-top: 24px;">
             <div class="flex-between">
                 <h2>💬 评论区</h2>
@@ -205,12 +281,13 @@
                 <div style="color: #ef4444; font-weight: bold; font-size: 14px;" id="topTimeDisplay">+ 2025.09.12 랭킹 더보기</div>
                 <div style="display: flex; align-items: center; gap: 12px; margin: 16px 0;">
                     <img src="pann-logo.png" alt="Pann Logo" class="preview-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                    <div style="width: 42px; height: 42px; background: #e5e7eb; border-radius: 8px; display: none; align-items: center; justify-content: center; font-size: 20px;">📷</div>
+                    <div style="width: 56px; height: 56px; background: #e5e7eb; border-radius: 8px; display: none; align-items: center; justify-content: center; font-size: 20px;">📷</div>
                     <h1 class="preview-title" id="previewTitle">奢侈妻子vs赌博丈夫</h1>
                 </div>
                 <div style="color: #9ca3af; font-size: 14px;">조회 52,381 추천 128</div>
             </div>
             <div class="preview-content" id="previewContent">妻子结婚前年薪4000万韩元，是白领，从父母那里得到了很多零花钱，但都用来打扮。包、衣服、鞋子、饰品、小狗用品等都是名牌...</div>
+            <div id="insertedImageContainer"></div>
             <div id="commentsPreview"></div>
         </div>
     </div>
@@ -218,7 +295,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script>
-    // 获取当天日期，格式：YYYY.MM.DD
+    // 存储正文插入的图片
+    let contentImageData = null;
+
+    // 获取当天日期
     function getTodayDate() {
         const now = new Date();
         const year = now.getFullYear();
@@ -227,18 +307,15 @@
         return `${year}.${month}.${day}`;
     }
 
-    // 生成默认的顶部时间文案（当天日期 + 韩语）
     function getDefaultTopTime() {
         return `+ ${getTodayDate()} 랭킹 더보기`;
     }
 
-    // 数据存储
     let comments = [
         { id: 1, username: "ㅇㅇ", content: "物以类聚，禁止放生", likes: 3, dislikes: 0, time: "2025.09.15 00:52" },
         { id: 2, username: "ㅇㅇ", content: "选择妻子也是赌博", likes: 2, dislikes: 1, time: "2025.09.14 23:34" }
     ];
 
-    // DOM 元素
     const titleInput = document.getElementById('titleInput');
     const contentInput = document.getElementById('contentInput');
     const previewTitle = document.getElementById('previewTitle');
@@ -252,31 +329,28 @@
     const captureArea = document.getElementById('captureArea');
     const topTimeInput = document.getElementById('topTimeInput');
     const topTimeDisplay = document.getElementById('topTimeDisplay');
+    const contentImageUpload = document.getElementById('contentImageUpload');
+    const contentImagePreview = document.getElementById('contentImagePreview');
+    const removeContentImageBtn = document.getElementById('removeContentImageBtn');
+    const insertedImageContainer = document.getElementById('insertedImageContainer');
 
-    // 初始化顶部时间栏（自动填入当天日期）
     topTimeInput.value = getDefaultTopTime();
     topTimeDisplay.innerText = topTimeInput.value;
-
-    // 监听顶部时间栏变化
     topTimeInput.addEventListener('input', () => {
         topTimeDisplay.innerText = topTimeInput.value;
     });
 
-    // 获取当前日期（用于评论时间）
     function getCurrentDate() {
         const now = new Date();
         return `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
     }
 
-    // 删除评论
     function deleteComment(id) {
         comments = comments.filter(comment => comment.id !== id);
         renderAll();
     }
 
-    // 渲染编辑区和预览区
     function renderAll() {
-        // 渲染编辑器中的评论列表
         commentsEditor.innerHTML = comments.map(comment => `
             <div class="comment-card" data-comment-id="${comment.id}">
                 <input type="text" class="edit-username" data-id="${comment.id}" value="${escapeHtml(comment.username)}" placeholder="用户名" style="margin-bottom: 8px;">
@@ -290,7 +364,6 @@
             </div>
         `).join('');
 
-        // 绑定编辑事件
         document.querySelectorAll('.edit-username').forEach(el => {
             el.addEventListener('change', (e) => updateComment(parseInt(el.dataset.id), 'username', e.target.value));
         });
@@ -306,8 +379,6 @@
         document.querySelectorAll('.edit-time').forEach(el => {
             el.addEventListener('change', (e) => updateComment(parseInt(el.dataset.id), 'time', e.target.value));
         });
-
-        // 绑定删除事件
         document.querySelectorAll('.delete-btn').forEach(el => {
             el.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -315,17 +386,28 @@
             });
         });
 
-        // 渲染预览区评论
         commentsPreview.innerHTML = comments.map(comment => `
             <div class="preview-comment">
                 <div class="comment-meta">
-                    <span>${escapeHtml(comment.time)}</span>
-                    <div>
-                        <span style="color: #ef4444;">👍 ${comment.likes}</span>
-                        <span style="color: #3b82f6; margin-left: 12px;">👎 ${comment.dislikes}</span>
+                    <div class="comment-id-time">
+                        <img src="like-icon.png" alt="like" class="comment-like-icon" onerror="this.style.display='none'">
+                        <span class="comment-username-wrapper">
+                            <span class="comment-username">${escapeHtml(comment.username)}</span>
+                        </span>
+                        <span>｜</span>
+                        <span>${escapeHtml(comment.time)}</span>
+                    </div>
+                    <div class="comment-votes">
+                        <div class="vote-item">
+                            <img src="thumbs-up.png" alt="like" class="vote-icon" onerror="this.style.display='none'">
+                            <span class="vote-count likes">${comment.likes}</span>
+                        </div>
+                        <div class="vote-item">
+                            <img src="thumbs-down.png" alt="dislike" class="vote-icon" onerror="this.style.display='none'">
+                            <span class="vote-count dislikes">${comment.dislikes}</span>
+                        </div>
                     </div>
                 </div>
-                <div class="comment-username">${escapeHtml(comment.username)}</div>
                 <div style="white-space: pre-wrap;">${escapeHtml(comment.content)}</div>
             </div>
         `).join('');
@@ -379,7 +461,41 @@
         renderAll();
     }
 
-    // 导出截图
+    // 正文图片上传处理
+    contentImageUpload.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                contentImageData = event.target.result;
+                const img = document.createElement('img');
+                img.src = contentImageData;
+                img.className = 'inserted-image';
+                contentImagePreview.innerHTML = '';
+                contentImagePreview.appendChild(img);
+                removeContentImageBtn.style.display = 'inline-block';
+                updateInsertedImageDisplay();
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    removeContentImageBtn.addEventListener('click', () => {
+        contentImageData = null;
+        contentImagePreview.innerHTML = '';
+        contentImageUpload.value = '';
+        removeContentImageBtn.style.display = 'none';
+        updateInsertedImageDisplay();
+    });
+
+    function updateInsertedImageDisplay() {
+        if (contentImageData) {
+            insertedImageContainer.innerHTML = `<img src="${contentImageData}" class="inserted-image" alt="inserted image">`;
+        } else {
+            insertedImageContainer.innerHTML = '';
+        }
+    }
+
     async function exportImage() {
         const originalOverflow = captureArea.style.overflow;
         captureArea.style.overflow = 'visible';
@@ -388,7 +504,7 @@
                 scale: 2,
                 backgroundColor: '#ffffff',
                 logging: false,
-                useCORS: false
+                useCORS: true
             });
             const link = document.createElement('a');
             link.download = 'pann-post.png';
@@ -401,7 +517,6 @@
         }
     }
 
-    // 监听标题和正文变化
     function bindPreviewSync() {
         titleInput.addEventListener('input', () => {
             previewTitle.innerText = titleInput.value;
@@ -411,7 +526,6 @@
         });
     }
 
-    // 初始化
     function init() {
         renderAll();
         bindPreviewSync();
